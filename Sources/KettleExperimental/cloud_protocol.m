@@ -307,18 +307,22 @@ BOOL RSCloudCommit(uint32_t appid, NSString *machine, NSDictionary<NSString *, N
     if (!body) return NO;
     uint64_t batch = rs_pb_get_varint(body.bytes, body.length, 1, 0);
     BOOL ok = YES;
+    // The error is kept outside the pool: set inside it straight through error, it would be
+    // autoreleased into the pool and freed when the pool drains, before the caller reads it.
+    NSString *failure = nil;
     for (NSString *name in uploads) {
         @autoreleasepool {
             NSError *err = nil;
             NSData *data = [NSData dataWithContentsOfFile:uploads[name] options:NSDataReadingMappedIfSafe error:&err];
             if (!data) {
-                Fail(error, @"%@: %@", name, err.localizedDescription);
+                Fail(&failure, @"%@: %@", name, err.localizedDescription);
                 ok = NO;
                 break;
             }
-            if (!(ok = UploadFile(appid, batch, name, data, times[name].unsignedLongLongValue, error))) break;
+            if (!(ok = UploadFile(appid, batch, name, data, times[name].unsignedLongLongValue, &failure))) break;
         }
     }
+    if (failure && error && !*error) *error = failure;
     for (NSString *name in ok ? deletes : @[]) {
         rs_pb_writer d = {0};
         rs_pb_varint(&d, 1, appid);
