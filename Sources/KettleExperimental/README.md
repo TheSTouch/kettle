@@ -21,11 +21,13 @@ the `Kettle` library is the route built on Steam's
 
 ## Where it comes from
 
-These files are the Steam runtime of [Mac-To-iOS-Recomp](https://github.com/TheSTouch/Mac-To-iOS-Recomp)
-(`recomp/native/RecompSteam`, as of its commit `8721478`), where it runs Valheim, Timberborn
-and other ports on iPad and iPhone. Only the session, the sign-in, the protobuf codec and the
-Steam Cloud protocol are here; the Steamworks API those ports serve on top is not. The names
-keep their `RecompSteam` prefix so fixes can move between the two copies.
+These files began as the Steam runtime of [Mac-To-iOS-Recomp](https://github.com/TheSTouch/Mac-To-iOS-Recomp)
+(`recomp/native/RecompSteam`, as of its commit `8721478`). Kettle is now their source:
+Mac-To-iOS-Recomp builds its ports' Steam runtime from this module, and its own copy is
+deprecated and no longer built, so fixes are made here. The ports it runs in, and what works
+there, are in [the README](../../README.md#used-in-mac-to-ios-recomp). Only the session, the
+sign-in, the protobuf codec and the Steam Cloud protocol are here; the Steamworks API those
+ports serve on top is not. The names keep their `RecompSteam` prefix.
 
 | Header | What |
 |---|---|
