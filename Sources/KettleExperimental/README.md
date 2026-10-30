@@ -50,6 +50,21 @@ On iOS, `RecompSteamAuth_StoredToken` reads the Keychain item the Mac-To-iOS-Rec
 write, and `RecompSteamAuth_StoreToken` does nothing: an app keeps its own refresh token
 and passes it to `RecompSteam_Start`.
 
+## Playing on two devices at once
+
 Steam lets an account play one game at a time. When the account is playing elsewhere,
 `RecompSteam_PlayingBlocked` says so; `RecompSteam_KickPlayingSession` ends the other game,
 so call it only when the player chose to.
+
+`RecompSteam_SetConcurrentPlay` decides what the session does meanwhile. **Deny**, the
+default, is the Steam client's way: the game asks the player to play here or go without
+Steam. **Allow** keeps Steam Cloud, stats and achievements and tickets working while the
+account plays elsewhere, without ending the other game and without claiming this one until
+the other ends. Allow is **not yet tested against live Steam**, and it is the studio's
+decision and risk: the [Steam Subscriber Agreement](https://store.steampowered.com/subscriber_agreement/)
+says an account is strictly personal ([section 1](https://store.steampowered.com/subscriber_agreement/#1))
+and lets Valve restrict or cancel an account that breaches it
+([section 9](https://store.steampowered.com/subscriber_agreement/#9)), and the
+[Steam Web API Terms of Use](https://steamcommunity.com/dev/apiterms) let Valve end a
+developer's access at any time. Read [docs/valve.md, "Playing on two devices at once"](../../docs/valve.md#playing-on-two-devices-at-once)
+before choosing it.
