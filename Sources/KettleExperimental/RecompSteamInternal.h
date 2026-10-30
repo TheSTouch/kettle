@@ -2,6 +2,7 @@
 #ifndef RECOMP_STEAM_INTERNAL_H
 #define RECOMP_STEAM_INTERNAL_H
 
+#include "KettleFeatures.h"
 #include "RecompSteamSession.h"
 #include "RecompSteamProto.h"
 
@@ -50,6 +51,25 @@ int RS_BeginAuthSession(uint32_t app, const uint8_t *ticket, size_t length, uint
 void RS_EndAuthSession(uint64_t steamid);
 
 void RS_SetAppID(uint32_t app);
+
+// Sends ClientGamesPlayed for what the game plays (RecompSteam_GamesPlayed), as the
+// concurrent-play rules allow.
+void RS_SendGamesPlayed(void);
+// Concurrent play (RecompSteamConcurrentPlay.m): the session tells it about logons, Steam's
+// playing-session state and logoffs, and asks what ClientGamesPlayed lists: 1 the games,
+// 0 none (a claim taken back), -1 send nothing. Without the ConcurrentPlay trait these are
+// Deny, the session as it always was.
+#if KETTLE_CONCURRENT_PLAY
+int RS_PlayingListGames(void);
+void RS_PlayingLoggedOn(void);
+void RS_PlayingState(bool blocked);
+int RS_PlayingLogOffRetry(int32_t eresult);
+#else
+static inline int RS_PlayingListGames(void) { return 1; }
+static inline void RS_PlayingLoggedOn(void) {}
+static inline void RS_PlayingState(bool blocked) { (void)blocked; }
+static inline int RS_PlayingLogOffRetry(int32_t eresult) { return eresult == RecompSteamResultLoggedInElsewhere ? 120 : 0; }
+#endif
 
 #ifdef __cplusplus
 }

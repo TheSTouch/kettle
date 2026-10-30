@@ -421,10 +421,6 @@ static NSMutableDictionary<NSNumber *, void (^)(RecompSteamState)> *gObservers;
 static NSMutableDictionary<NSNumber *, NSArray *> *gSubs;   // id -> @[emsg or name, handler]
 static int gNextId = 1;
 static double gConnectedAt;
-static int gConcurrentPlay;          // RecompSteamConcurrentPlay, written on Q
-static BOOL gPlayingSettled;         // Steam said since the logon whether the account plays elsewhere, or 5 s passed
-static BOOL gBlockedHere;            // what it said (gPlayingBlocked outlives the connection)
-static BOOL gClaiming;               // the last ClientGamesPlayed on this connection listed gPlaying
 
 static void Connect(void);
 static void OnLoggedOn(const RecompSteamMessage *msg);
@@ -618,14 +614,13 @@ static void Heartbeat(RSLink *link, int seconds)
     });
 }
 
-static void SendGamesPlayed(void)
+void RS_SendGamesPlayed(void)
 {
     if (RecompSteam_State() != RecompSteamLoggedOn) return;
-    BOOL claim = RecompSteam_ClaimsGame(gConcurrentPlay, gPlayingSettled, gBlockedHere);
-    if (!claim && !gClaiming) return;   // Allow, withheld, and nothing claimed to take back
-    gClaiming = claim;
+    int list = RS_PlayingListGames();
+    if (list < 0) return;
     rs_pb_writer w = {0};
-    for (NSNumber *app in claim ? gPlaying : nil) {
+    for (NSNumber *app in list ? gPlaying : nil) {
         rs_pb_writer g = {0};
         rs_pb_fixed64(&g, 2, app.unsignedLongLongValue);   // game_id: the app id for a Steam game
         rs_pb_message(&w, 1, &g);
@@ -636,12 +631,6 @@ static void SendGamesPlayed(void)
     rs_pb_free(&w);
 }
 
-// Claims the game, or takes the claim back, when the rules' answer changed (RecompSteam_SetConcurrentPlay).
-static void UpdateClaim(void)
-{
-    if (RecompSteam_ClaimsGame(gConcurrentPlay, gPlayingSettled, gBlockedHere) != gClaiming) SendGamesPlayed();
-}
-
 static void OnMessage(RSLink *link, const RecompSteamMessage *msg)
 {
     if (link != gLink) return;
@@ -650,7 +639,7 @@ static void OnMessage(RSLink *link, const RecompSteamMessage *msg)
     case RS_ClientLoggedOff: {
         int32_t er = (int32_t)rs_pb_get_varint(msg->body, msg->length, 1, 2);
         RLOG("Steam logged the session off (EResult %d)", er);
-        int retry = RecompSteam_LogOffRetryDelay(gConcurrentPlay, er);
+        int retry = RS_PlayingLogOffRetry(er);   // Deny: 120 s after LoggedInElsewhere, retry slowly
         if (retry) gBackoff = retry;
         [link close];
         return;
@@ -671,9 +660,7 @@ static void OnMessage(RSLink *link, const RecompSteamMessage *msg)
         gPlayingApp = app;
         os_unfair_lock_unlock(&gLock);
         if (blocked) RLOG("the account is playing app %u on another device", app);
-        gBlockedHere = blocked;
-        gPlayingSettled = YES;
-        if (gConcurrentPlay == RecompSteamConcurrentPlayAllow) UpdateClaim();
+        RS_PlayingState(blocked);
         break;
     }
     case RS_ClientGameConnectTokens:
@@ -718,15 +705,8 @@ static void OnLoggedOn(const RecompSteamMessage *msg)
     int beat = (int)rs_pb_get_varint(msg->body, msg->length, 3, 9);
     Heartbeat(gLink, beat > 0 ? beat : 9);
     SetState(RecompSteamLoggedOn);
-    gPlayingSettled = gBlockedHere = gClaiming = NO;
-    // Steam says right after logon when the account plays elsewhere, and says nothing otherwise.
-    RSLink *link = gLink;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC), Q, ^{
-        if (link != gLink || gPlayingSettled) return;
-        gPlayingSettled = YES;
-        if (gConcurrentPlay == RecompSteamConcurrentPlayAllow) UpdateClaim();
-    });
-    SendGamesPlayed();   // Deny: at once; Allow: once settled
+    RS_PlayingLoggedOn();
+    RS_SendGamesPlayed();   // Deny: at once; Allow: once Steam said nobody plays elsewhere
     TicketsOnLogon();
 }
 
@@ -874,33 +854,8 @@ void RecompSteam_GamesPlayed(const uint32_t *app_ids, int count)
     dispatch_async(Q, ^{
         if ([apps isEqualToArray:gPlaying ?: @[]] && gPlaying) return;
         gPlaying = apps;
-        SendGamesPlayed();
+        RS_SendGamesPlayed();
     });
-}
-
-void RecompSteam_SetConcurrentPlay(int policy)
-{
-    int p = policy == RecompSteamConcurrentPlayAllow ? RecompSteamConcurrentPlayAllow : RecompSteamConcurrentPlayDeny;
-    dispatch_async(Q, ^{
-        if (p == gConcurrentPlay) return;
-        __atomic_store_n(&gConcurrentPlay, p, __ATOMIC_RELAXED);
-        RLOG("concurrent play: %s", p == RecompSteamConcurrentPlayAllow ? "allow" : "deny");
-        UpdateClaim();
-    });
-}
-
-int RecompSteam_ConcurrentPlay(void) { return __atomic_load_n(&gConcurrentPlay, __ATOMIC_RELAXED); }
-
-bool RecompSteam_ClaimsGame(int policy, bool settled, bool blocked)
-{
-    if (policy != RecompSteamConcurrentPlayAllow) return true;
-    return settled && !blocked;
-}
-
-int RecompSteam_LogOffRetryDelay(int policy, int32_t eresult)
-{
-    if (eresult != RecompSteamResultLoggedInElsewhere) return 0;
-    return policy == RecompSteamConcurrentPlayAllow ? 0 : 120;   // Deny: another device took the game, retry slowly
 }
 
 void RecompSteam_KickPlayingSession(void)
@@ -980,6 +935,14 @@ void RecompSteam_CallUnauthed(const char *method, const void *request, size_t le
 }
 
 // --- ownership and auth session tickets ------------------------------------------------------------
+// Built only with the Tickets trait (KettleFeatures.h); without it the session's three calls in
+// are no-ops.
+
+#if !KETTLE_TICKETS
+static void TicketsOnLogon(void) {}
+static void TicketsOnDisconnect(void) {}
+static void HandleTicketMessage(const RecompSteamMessage *msg) { (void)msg; }
+#else
 
 static NSMutableArray<NSData *> *gGCTokens;
 static NSMutableDictionary<NSNumber *, NSData *> *gOwnership;    // app -> ticket
@@ -1245,6 +1208,8 @@ void RS_EndAuthSession(uint64_t steamid)
         if (RecompSteam_State() == RecompSteamLoggedOn) RS_SendAuthList(app, nil);
     });
 }
+
+#endif
 
 void RS_SetAppID(uint32_t app)
 {

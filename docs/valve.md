@@ -45,7 +45,8 @@ and there is nothing to configure.
 
 **The experimental module** logs on as a Steam client, so Steam does know. Its setting
 `RecompSteam_SetConcurrentPlay` decides what happens when the account already plays
-elsewhere:
+elsewhere. It is built only into games that turn on the package's `ConcurrentPlay` trait;
+without it, the session is always Deny.
 
 - **Deny, the default:** the module behaves like the Steam client. `RecompSteam_PlayingBlocked`
   tells the game, and the game offers "Play here" (`RecompSteam_KickPlayingSession`, which

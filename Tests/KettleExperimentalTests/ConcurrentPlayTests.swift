@@ -1,6 +1,7 @@
 import KettleExperimental
 import XCTest
 
+#if KETTLE_CONCURRENT_PLAY   // the ConcurrentPlay trait: swift test --traits ConcurrentPlay
 final class ConcurrentPlayTests: XCTestCase {
     let deny = Int32(RecompSteamConcurrentPlayDeny.rawValue)
     let allow = Int32(RecompSteamConcurrentPlayAllow.rawValue)
@@ -45,3 +46,4 @@ final class ConcurrentPlayTests: XCTestCase {
         XCTAssertEqual(RecompSteam_LogOffRetryDelay(allow, Int32(RecompSteamResultServiceUnavailable)), 0)
     }
 }
+#endif

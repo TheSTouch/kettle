@@ -28,6 +28,32 @@ keep their `RecompSteam` prefix so fixes can move between the two copies.
 Every completion runs on the session's own serial queue (`RecompSteam_Queue()`); hop to
 the main queue for UI.
 
+## Choosing the parts
+
+Each part beyond the session is a package trait, so a game that does not want one leaves its
+code out of the app entirely (calling a function of a part left out fails to link):
+
+| Trait | Default | What |
+|---|---|---|
+| `SignIn` | on | signing in as a Steam client: QR code, or account name, password and Steam Guard |
+| `Cloud` | on | Steam Cloud: list, download, upload |
+| `Tickets` | on | app ownership and auth session tickets |
+| `ConcurrentPlay` | **off** | `RecompSteam_SetConcurrentPlay`: Steam beside another device ([below](#playing-on-two-devices-at-once)) |
+
+The session, the protobuf codec and the token helpers are always built. Pick the traits
+where you add the package (Swift 6.1 or later):
+
+```swift
+.package(url: "https://github.com/TheSTouch/kettle", from: "0.1.0",
+         traits: ["Cloud"])                                // only Steam Cloud
+.package(url: "https://github.com/TheSTouch/kettle", from: "0.1.0",
+         traits: [.defaults, "ConcurrentPlay"])           // the defaults, plus concurrent play
+```
+
+Built outside SwiftPM, the files take the same defaults; define
+`KETTLE_EXPERIMENTAL_CONFIGURED` and then `KETTLE_SIGN_IN`, `KETTLE_CLOUD`,
+`KETTLE_TICKETS` or `KETTLE_CONCURRENT_PLAY` to choose (`KettleFeatures.h`).
+
 ## Using it from an app
 
 ```swift
@@ -56,7 +82,8 @@ Steam lets an account play one game at a time. When the account is playing elsew
 `RecompSteam_PlayingBlocked` says so; `RecompSteam_KickPlayingSession` ends the other game,
 so call it only when the player chose to.
 
-`RecompSteam_SetConcurrentPlay` decides what the session does meanwhile. **Deny**, the
+`RecompSteam_SetConcurrentPlay` (the `ConcurrentPlay` trait, off by default) decides what the
+session does meanwhile; without the trait the session is always Deny. **Deny**, the
 default, is the Steam client's way: the game asks the player to play here or go without
 Steam. **Allow** keeps Steam Cloud, stats and achievements and tickets working while the
 account plays elsewhere, without ending the other game and without claiming this one until

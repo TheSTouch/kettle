@@ -25,7 +25,8 @@ your game (iOS)                       your server                          Steam
   web-standard `Request`/`Response`, so it runs on Node, Cloudflare Workers, Deno or Bun.
   Your Steam publisher Web API key stays there; the app never sees it.
 - **`KettleExperimental`** (C / Objective-C): a reimplemented Steam client for what Steam's
-  web APIs do not offer (Steam Cloud, tickets). Not endorsed by Valve; read
+  web APIs do not offer (Steam Cloud, tickets). Each of its parts is a package trait, so a
+  game builds in only the parts it wants. Not endorsed by Valve; read
   [its README](Sources/KettleExperimental/README.md) first.
 
 The wire protocol between the app and the server is [docs/protocol.md](docs/protocol.md).
@@ -83,6 +84,7 @@ A Steam owner who lost the network keeps playing for 30 days after their last go
 
 ```sh
 swift test                         # the Swift library and the experimental module
+swift test --enable-all-traits     # the same with every experimental part built in
 cd server && npm test && npm run typecheck
 ```
 
