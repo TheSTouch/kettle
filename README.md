@@ -10,8 +10,10 @@ check and achievements for iPhone and iPad games, plus a small server you run.
 > an application appear endorsed by or affiliated with Valve.
 
 **Status: early.** The Swift library and the server are tested against fakes of Steam; they
-have not yet run against live Steam with a real publisher key. Try it on a test app first,
-and please [open an issue](../../issues) with what you find.
+have not yet run against live Steam with a real publisher key. `KettleExperimental` has run
+against live Steam: it is the Steam runtime of four games in Mac-To-iOS-Recomp, tested on an
+iPad (see [Used in Mac-To-iOS-Recomp](#used-in-mac-to-ios-recomp)). Try it on a test app
+first, and please [open an issue](../../issues) with what you find.
 
 ## How it fits together
 
@@ -35,6 +37,27 @@ your game (iOS)                       your server                          Steam
   [its README](Sources/KettleExperimental/README.md) first.
 
 The wire protocol between the app and the server is [docs/protocol.md](docs/protocol.md).
+
+## Used in Mac-To-iOS-Recomp
+
+[Mac-To-iOS-Recomp](https://github.com/TheSTouch/Mac-To-iOS-Recomp) ports Mac games to iPad
+and iPhone. It builds the Steam runtime of every port from `KettleExperimental` v0.1.0 (a git
+submodule, with the `KETTLE_CONCURRENT_PLAY` part built in and left on Deny), since its
+[pull request #5](https://github.com/TheSTouch/Mac-To-iOS-Recomp/pull/5). One round of
+testing on an iPad, on 2026-10-30, gave:
+
+| Game | Engine | Sign-in | Licence check | Cloud saves | Achievements | Online play |
+|---|---|---|---|---|---|---|
+| Timberborn | Unity | works | works | upload works; download not tested | partial: read; no unlock seen in play | not in the game |
+| Valheim | Unity | works | works, DLC included | upload works; download not tested | partial: read; setting one went through, but it was already unlocked | works: joined a password-protected Steam server by IP |
+| Brawlhalla | Adobe AIR | works | works | not used by the port | partial: read | not in the port; its encrypted app ticket works |
+| Stray | Unreal | works | works | partial: the sync ran but uploaded no files | not in Unreal ports yet | not in the game |
+
+- **Cloud download** needs a save changed from another device first, so it was not tested.
+- **The account playing on another device** was tested only with Timberborn: Steam logged
+  the session off (`LoggedInElsewhere`), it tried again after two minutes, and the game
+  played on in its offline grace. Steam logs the session off before the ownership ticket
+  comes, so the "Play here" prompt did not show. The old copy did the same.
 
 ## App Store
 
