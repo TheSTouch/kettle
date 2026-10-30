@@ -122,6 +122,45 @@ bool RecompSteam_PlayingBlocked(uint32_t *app);
 // without asking.
 void RecompSteam_KickPlayingSession(void);
 
+// Whether Steam keeps working here while the account plays on another device ("concurrent
+// play"). Steam lets an account play one game at a time; this decides what the session does
+// when it is not the one.
+//
+// Deny (the default) is the session as it always was: it tells Steam the account plays the
+// game here (ClientGamesPlayed) as soon as it logs on, and when Steam logs it off because
+// the account plays elsewhere (LoggedInElsewhere) it waits two minutes before logging on
+// again. The app asks the player: "Play here" (RecompSteam_KickPlayingSession) or no Steam.
+//
+// Allow keeps the session logged on, for Steam Cloud, stats and achievements and tickets,
+// without ending the other device's game. The session never claims the game while the
+// account plays elsewhere: after each logon it waits up to 5 seconds for Steam's word,
+// because Steam sends ClientPlayingSessionState right after logon only when the account
+// plays elsewhere (as node-steam-user documents), then claims the game only if nobody
+// does. When another device starts playing later, it takes the claim back (an empty
+// ClientGamesPlayed); when that game ends, it claims the game again. Logged off for playing
+// elsewhere, it logs straight back on, without the claim. It never kicks the other device
+// on its own. Why this way: the claim is what Steam's one-game rule is about, while Cloud,
+// stats and tickets are calls a logged-on session makes whether it plays or not, so not
+// claiming is the least the session can do to stay out of the other game's way. Steam may
+// still refuse some of those calls on its side (a game server can answer a ticket with
+// LoggedInElseWhere). Not yet tested against live Steam.
+//
+// Allow is the studio's decision and risk: read docs/valve.md, "Playing on two devices at
+// once", first. Any other value is Deny. Takes effect at once; callable from any thread.
+typedef enum {
+    RecompSteamConcurrentPlayDeny = 0,
+    RecompSteamConcurrentPlayAllow = 1,
+} RecompSteamConcurrentPlay;
+void RecompSteam_SetConcurrentPlay(int policy);
+int RecompSteam_ConcurrentPlay(void);
+// The rules above as pure functions, for tests and for apps that explain them. Whether the
+// session lists the game in ClientGamesPlayed: settled once Steam said since the logon
+// whether the account plays elsewhere (or 5 seconds passed), blocked what it said.
+bool RecompSteam_ClaimsGame(int policy, bool settled, bool blocked);
+// Seconds to wait before logging on again after Steam logged the session off with eresult;
+// 0 for the usual backoff.
+int RecompSteam_LogOffRetryDelay(int policy, int32_t eresult);
+
 // --- tickets and ownership -------------------------------------------------------------
 
 // The app ownership ticket Steam signs for app_id (cached until near expiry). eresult

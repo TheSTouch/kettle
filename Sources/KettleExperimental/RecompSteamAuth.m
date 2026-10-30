@@ -7,8 +7,6 @@
 
 #define RLOG(...) RecompSteam_Log(__VA_ARGS__)
 
-static const int kPlatformSteamClient = 1;   // EAuthTokenPlatformType
-
 bool RecompSteamAuth_IsClientToken(const char *refresh_token)
 {
     return refresh_token && rs_token_has_audience(refresh_token, "client");
@@ -87,6 +85,11 @@ bool RecompSteamAuth_StoreToken(const char *refresh_token)
 }
 
 // --- flows ------------------------------------------------------------------------------
+// Built only with the SignIn trait (KettleFeatures.h); the token helpers above always are.
+
+#if KETTLE_SIGN_IN
+
+static const int kPlatformSteamClient = 1;   // EAuthTokenPlatformType
 
 @interface RSAuthFlow : NSObject
 @property (nonatomic) int ident;
@@ -376,3 +379,5 @@ void RecompSteamAuth_Cancel(int flow)
 {
     dispatch_async(RecompSteam_Queue(), ^{ [gFlows removeObjectForKey:@(flow)]; });
 }
+
+#endif

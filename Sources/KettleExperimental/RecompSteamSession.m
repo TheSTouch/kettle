@@ -614,11 +614,13 @@ static void Heartbeat(RSLink *link, int seconds)
     });
 }
 
-static void SendGamesPlayed(void)
+void RS_SendGamesPlayed(void)
 {
     if (RecompSteam_State() != RecompSteamLoggedOn) return;
+    int list = RS_PlayingListGames();
+    if (list < 0) return;
     rs_pb_writer w = {0};
-    for (NSNumber *app in gPlaying) {
+    for (NSNumber *app in list ? gPlaying : nil) {
         rs_pb_writer g = {0};
         rs_pb_fixed64(&g, 2, app.unsignedLongLongValue);   // game_id: the app id for a Steam game
         rs_pb_message(&w, 1, &g);
@@ -637,7 +639,8 @@ static void OnMessage(RSLink *link, const RecompSteamMessage *msg)
     case RS_ClientLoggedOff: {
         int32_t er = (int32_t)rs_pb_get_varint(msg->body, msg->length, 1, 2);
         RLOG("Steam logged the session off (EResult %d)", er);
-        if (er == RecompSteamResultLoggedInElsewhere) gBackoff = 120;   // signed in elsewhere: retry slowly
+        int retry = RS_PlayingLogOffRetry(er);   // Deny: 120 s after LoggedInElsewhere, retry slowly
+        if (retry) gBackoff = retry;
         [link close];
         return;
     }
@@ -657,6 +660,7 @@ static void OnMessage(RSLink *link, const RecompSteamMessage *msg)
         gPlayingApp = app;
         os_unfair_lock_unlock(&gLock);
         if (blocked) RLOG("the account is playing app %u on another device", app);
+        RS_PlayingState(blocked);
         break;
     }
     case RS_ClientGameConnectTokens:
@@ -701,7 +705,8 @@ static void OnLoggedOn(const RecompSteamMessage *msg)
     int beat = (int)rs_pb_get_varint(msg->body, msg->length, 3, 9);
     Heartbeat(gLink, beat > 0 ? beat : 9);
     SetState(RecompSteamLoggedOn);
-    SendGamesPlayed();
+    RS_PlayingLoggedOn();
+    RS_SendGamesPlayed();   // Deny: at once; Allow: once Steam said nobody plays elsewhere
     TicketsOnLogon();
 }
 
@@ -849,7 +854,7 @@ void RecompSteam_GamesPlayed(const uint32_t *app_ids, int count)
     dispatch_async(Q, ^{
         if ([apps isEqualToArray:gPlaying ?: @[]] && gPlaying) return;
         gPlaying = apps;
-        SendGamesPlayed();
+        RS_SendGamesPlayed();
     });
 }
 
@@ -930,6 +935,14 @@ void RecompSteam_CallUnauthed(const char *method, const void *request, size_t le
 }
 
 // --- ownership and auth session tickets ------------------------------------------------------------
+// Built only with the Tickets trait (KettleFeatures.h); without it the session's three calls in
+// are no-ops.
+
+#if !KETTLE_TICKETS
+static void TicketsOnLogon(void) {}
+static void TicketsOnDisconnect(void) {}
+static void HandleTicketMessage(const RecompSteamMessage *msg) { (void)msg; }
+#else
 
 static NSMutableArray<NSData *> *gGCTokens;
 static NSMutableDictionary<NSNumber *, NSData *> *gOwnership;    // app -> ticket
@@ -1195,6 +1208,8 @@ void RS_EndAuthSession(uint64_t steamid)
         if (RecompSteam_State() == RecompSteamLoggedOn) RS_SendAuthList(app, nil);
     });
 }
+
+#endif
 
 void RS_SetAppID(uint32_t app)
 {

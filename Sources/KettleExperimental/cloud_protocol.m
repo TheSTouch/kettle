@@ -14,6 +14,10 @@
 //
 // Files go up as they are (no compression, no encryption). Encrypted downloads are not
 // handled: no tested game has one.
+#include "KettleFeatures.h"
+
+#if KETTLE_CLOUD   // the Cloud trait
+
 #import "RecompSteamCloud.h"
 #import "RecompSteamSession.h"
 #import "RecompSteamProto.h"
@@ -330,3 +334,5 @@ BOOL RSCloudCommit(uint32_t appid, NSString *machine, NSDictionary<NSString *, N
     if (!Call("Cloud.CompleteAppUploadBatchBlocking#1", &done, error)) ok = NO;
     return ok;
 }
+
+#endif

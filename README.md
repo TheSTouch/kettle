@@ -4,7 +4,10 @@ Let players who own your game on Steam play your iOS version: Steam sign-in, the
 check and achievements for iPhone and iPad games, plus a small server you run.
 
 > Kettle is an independent open-source project. It is not made, endorsed or supported by
-> Valve. "Steam" is a trademark of Valve Corporation.
+> Valve. "Steam" is a trademark of Valve Corporation; see Valve's
+> [Steam brand guidelines](https://partner.steamgames.com/doc/marketing/branding) and the
+> [Steam Web API Terms of Use](https://steamcommunity.com/dev/apiterms), which forbid making
+> an application appear endorsed by or affiliated with Valve.
 
 **Status: early.** The Swift library and the server are tested against fakes of Steam; they
 have not yet run against live Steam with a real publisher key. Try it on a test app first,
@@ -24,19 +27,28 @@ your game (iOS)                       your server                          Steam
 - **`server/`** (TypeScript, no runtime dependencies): the endpoints the app talks to, on
   web-standard `Request`/`Response`, so it runs on Node, Cloudflare Workers, Deno or Bun.
   Your Steam publisher Web API key stays there; the app never sees it.
-- **`KettleExperimental`** (C / Objective-C): a reimplemented Steam client for what Steam's
-  web APIs do not offer (Steam Cloud, tickets). Not endorsed by Valve; read
+- **`KettleExperimental`** (C / Objective-C): a reimplemented Steam client for what the
+  official route does not offer: auth session tickets, which only a Steam client makes, and
+  Steam Cloud, which Valve's [`ICloudService`](https://partner.steamgames.com/doc/webapi/ICloudService)
+  Web API also covers through Steam OAuth but Kettle does not implement yet. Each of its parts is a package trait, so a
+  game builds in only the parts it wants. Not endorsed by Valve; read
   [its README](Sources/KettleExperimental/README.md) first.
 
 The wire protocol between the app and the server is [docs/protocol.md](docs/protocol.md).
 
 ## App Store
 
-Apple lets an app honour a purchase made in another store only when the same thing can be
-bought in the app. So Steam is a second way in, never the only one: sell the unlock as an
-in-app purchase and let Steam owners unlock for free. `UnlockGate` does exactly that.
-[docs/app-store.md](docs/app-store.md) covers the rules involved, the sign-in and
-account-deletion requirements, and what to tell App Review.
+> **Our reading, not legal advice.** This summarises Apple's and Valve's rules as we understand them. It may contain mistakes or be out of date: rely only on the official documents linked here, not on our description.
+
+Apple lets an app honour a purchase made on another platform only when the same thing can
+be bought in the app ([App Review Guidelines 3.1.3(b)](https://developer.apple.com/app-store/review/guidelines/#3.1.3b)),
+and requires in-app purchase to unlock a full version ([3.1.1](https://developer.apple.com/app-store/review/guidelines/#3.1.1)).
+So Steam is a second way in, never the only one: sell the unlock as an in-app purchase and
+let Steam owners unlock for free. `UnlockGate` does exactly that.
+[docs/app-store.md](docs/app-store.md) covers the rules involved, the sign-in
+([4.8](https://developer.apple.com/app-store/review/guidelines/#4.8)) and account-deletion
+([5.1.1(v)](https://developer.apple.com/app-store/review/guidelines/#5.1.1v)) requirements,
+and what to tell App Review.
 
 ## Quick start
 
@@ -75,7 +87,9 @@ A Steam owner who lost the network keeps playing for 30 days after their last go
 
 ## Before you ship
 
-- Read [docs/valve.md](docs/valve.md): what to ask Valve, where the publisher key lives.
+- Read [docs/valve.md](docs/valve.md): what to ask Valve, where the publisher key lives,
+  and what Valve's [Steam Subscriber Agreement](https://store.steampowered.com/subscriber_agreement/)
+  and [Steam Web API Terms of Use](https://steamcommunity.com/dev/apiterms) say.
 - Rate-limit `/steam/token` and `/steam/achievements` at your edge.
 - Add a "delete my account" control that calls `kettle.deleteAccount()`.
 
@@ -83,6 +97,7 @@ A Steam owner who lost the network keeps playing for 30 days after their last go
 
 ```sh
 swift test                         # the Swift library and the experimental module
+swift test --enable-all-traits     # the same with every experimental part built in
 cd server && npm test && npm run typecheck
 ```
 
