@@ -2,13 +2,22 @@
 
 A Steam client in plain C and Objective-C: it logs on to Steam's connection managers over
 a WebSocket as the player, the way the Steam client does, following the protocol as
-SteamKit2 and node-steam-user document it. It gives what Steam's web APIs do not: Steam
-Cloud files, app ownership and auth session tickets, presence, any unified service method.
+SteamKit2 and node-steam-user document it. It gives what Kettle's official route does not:
+app ownership and auth session tickets, presence, any unified service method, and Steam
+Cloud files (Valve also documents [`ICloudService`](https://partner.steamgames.com/doc/webapi/ICloudService),
+a Web API for them through Steam OAuth, which Kettle does not implement yet).
+
+> **Our reading, not legal advice.** This summarises Apple's and Valve's rules as we understand them. It may contain mistakes or be out of date: rely only on the official documents linked here, not on our description.
 
 **Not endorsed by Valve.** Steam can change this protocol at any time and break every game
-that ships this module, and Valve may object to a game signing in as a Steam client. Ask
-Valve (Steamworks support) before shipping it in a store build; the `Kettle` library is the
-route built on Steam's documented APIs. See [docs/valve.md](../../docs/valve.md).
+that ships this module, and Valve may object to a game signing in as a Steam client: the
+[Steam Web API Terms of Use](https://steamcommunity.com/dev/apiterms) let Valve suspend or
+end a developer's access "at any time for any reason, without notice", and the
+[Steam Subscriber Agreement](https://store.steampowered.com/subscriber_agreement/) governs
+the player's account. Ask Valve (Steamworks support) before shipping it in a store build;
+the `Kettle` library is the route built on Steam's
+[documented APIs](https://partner.steamgames.com/doc/features/auth). See
+[docs/valve.md](../../docs/valve.md).
 
 ## Where it comes from
 

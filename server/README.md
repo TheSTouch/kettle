@@ -31,8 +31,9 @@ node example.ts
 ```
 
 `KETTLE_BASE_URL` is the public URL players reach, the one Steam sends them back to; put the
-server behind HTTPS. `KETTLE_ALLOW_FAMILY_SHARING=true` counts games lent through Steam Family
-Sharing as owned (off by default: the iOS copy is a separate product). `PORT` defaults to 8787.
+server behind HTTPS. `KETTLE_ALLOW_FAMILY_SHARING=true` counts games borrowed through
+[Steam Families](https://partner.steamgames.com/doc/features/families) as owned (off by
+default: Valve calls those licences temporary, and the iOS copy is a separate product). `PORT` defaults to 8787.
 
 In your own Node server:
 
@@ -76,14 +77,25 @@ plain variables.
 
 ## Security notes
 
-- **The publisher key stays here.** It can change anything about your game on Steam. It is never
-  logged or sent back, in errors either; keep it out of your own logs too.
+> **Our reading, not legal advice.** This summarises Apple's and Valve's rules as we understand them. It may contain mistakes or be out of date: rely only on the official documents linked here, not on our description.
+
+- **The publisher key stays here.** It can change anything about your game on Steam. Valve
+  says the partner calls that need it ([`CheckAppOwnership`](https://partner.steamgames.com/doc/webapi/ISteamUser#CheckAppOwnership),
+  [`SetUserStatsForGame`](https://partner.steamgames.com/doc/webapi/ISteamUserStats#SetUserStatsForGame))
+  must be made from a secure server and never from a client, and the
+  [Steam Web API Terms of Use](https://steamcommunity.com/dev/apiterms) ask you to keep your key
+  confidential (section 2). It is never logged or sent back, in errors either; keep it out of
+  your own logs too.
 - **The session secret** is at least 32 random bytes. It signs every sign-in state, code and
   session token. Rotating it signs every player out, which is also how to revoke all sessions.
 - **Rate-limit** `/steam/token` and `/steam/achievements` at your edge (per IP and per token).
-  The server does not: it keeps no state.
+  The server does not: it keeps no state. The Steam Web API Terms of Use also say "You are
+  limited to one hundred thousand (100,000) calls to the Steam Web API per day" (section 2).
 - **Redirect URIs** are matched exactly. List only your game's own scheme.
 - **Achievements** are trusted from the game, as Steam trusts the game on PC.
+- **Account deletion.** If you store the Steam ID, delete it in `DELETE /steam/account`: Apple
+  requires in-app account deletion when an app supports account creation
+  ([App Review Guidelines 5.1.1(v)](https://developer.apple.com/app-store/review/guidelines/#5.1.1v)).
 
 ## Tests
 
