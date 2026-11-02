@@ -1,0 +1,38 @@
+{
+  "blocked": [
+    {
+      "id": 1,
+      "reason": "Claude Code\u2019s first-run onboarding is on its screen (the theme picker), so it cannot take any work, and the farm presses nothing there. The session needs restarting once onboarding is marked done for the farm user (hasCompletedOnboarding in its ~/.claude.json, which agents/claude onboard writes, D576): close it, and retry the item or start the session again \u2014 its session has since ended; the work is on farm/blocked-1 and this needs an answer in the backlog",
+      "remote_control": null,
+      "title": "Read achievements and stats"
+    }
+  ],
+  "claimable_here": 7,
+  "current": null,
+  "host": "linux",
+  "items": {
+    "blocked": 1,
+    "done": 0,
+    "running": 0,
+    "todo": 7,
+    "total": 8
+  },
+  "lane": "finishing",
+  "lane_started": "2026-11-02T19:09:05Z",
+  "project": "kettle",
+  "schema": 1,
+  "since": "2026-11-02T19:22:20Z",
+  "slots": {
+    "busy": 0,
+    "held_by_blocked": 0,
+    "occupied": [],
+    "total": 0
+  },
+  "stuck": [
+    {
+      "reason": "every one of its 1 slot(s) is held by a blocked item (#1) and #2 is waiting behind them. Answer one of those and the lane starts again by itself",
+      "since": "2026-11-02T19:13:01Z",
+      "why": "slots"
+    }
+  ]
+}
