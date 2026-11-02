@@ -1,0 +1,6 @@
+test: swift test
+tech:
+  - swift
+  - typescript
+  - c
+  - objective-c
